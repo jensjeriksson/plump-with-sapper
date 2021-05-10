@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans&display=swap');
+* {
+    box-sizing: border-box;
+    margin: 0;
+    font-family: 'Open Sans', sans-serif;
+    padding: 0;
+}
+:root {
+    --main-height: 1vh;
+    --main-width: 1vh;
+    --primary-color: #b9c6d2;
+    --secondary-color: #d0dde9;
+	--tertiary-color: #edf0f8;
+    --light-blue: #92a8d1;
+    --dark-blue: #034f84;
+    --light-red: #f7cac9;
+    --dark-red: #f7786b;
+}
+body {
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(
+        180deg,
+        var(--primary-color) 0%,
+        var(--secondary-color) 10.45%,
+        var(--tertiary-color) 41.35%
+    );
+    font-family: 'Open Sans', sans-serif;
+    overflow: hidden;
+    position: relative;
+}
+#sapper {
+    height: 100%;
+}
+#svelte {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+/* Forms and buttons */
+form {
+    width: 100%;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    margin-top: 1rem;
+}
+input, select {
+    width: 100%;
+    height: auto;
+    padding: .5rem;
+    outline: none;
+    border: none;
+}
+label {
+    margin-bottom: 1rem;
+}
+button {
+    width: auto;
+    display: inline-block;
+    padding: 1rem;
+    border-radius: 5px;
+    color: var(--light-blue);
+    background: var(--dark-blue);
+    font-size: 1rem;
+    letter-spacing: 1.5px;
+    border: none;
+    outline: none;
+    cursor: pointer;
+}
+button:hover {
+    color: white;
+}
+
+/* CARDS */
+.hearts, .diamonds {
+    color: red !important;
+}
+.clubs, .spades {
+    color: black !important;
+}
+
+table {
+    width: 100%;
+    height: auto;
+    border-collapse: collapse;
+}
+table tr:first-of-type {
+    border-bottom: 2px solid #444;
+}
+th, td {
+    border: none;
+    text-align: center;
+}
+.activeround th, .activeround td {
+    background: var(--light-blue);
+    color: var(--dark-blue);
+}
+
+
+@media screen and (width: 1280px) and (orientaion: landscape) {
+    body, html {
+        width: 1280px;
+        height: 698px;
+    }
+}
