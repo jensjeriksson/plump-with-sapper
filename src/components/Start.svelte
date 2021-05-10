@@ -27,8 +27,8 @@
 
     //When creating game or joining game
     socket.on('gotoGame', data => {
-        window.sessionStorage.setItem('name', data.user.name),
-        window.sessionStorage.setItem('_id', data.user._id),
+        window.sessionStorage.setItem('name', data.user.name)
+        window.sessionStorage.setItem('_id', data.user._id)
 
         window.location.assign(`/games/${data.game}`)
     })

@@ -31,18 +31,22 @@
             })
         socket.emit('chat', output)
         message = ""
-        document.querySelector('.chat').scrollTop = document.querySelector('.chat').scrollHeight
+        setTimeout(() => {
+            document.querySelector('.chat').scrollTop = document.querySelector('.chat').scrollHeight
+        }, 300);
     }
 
     socket.on('chat', message => {
         messages.write(message)
-        document.querySelector('.chat').scrollTop = document.querySelector('.chat').scrollHeight
+        setTimeout(() => {
+            document.querySelector('.chat').scrollTop = document.querySelector('.chat').scrollHeight
+        }, 300);
     })
     
 </script>
 
 
-<div class="info" class:toggleInfo>
+<div class={$game.round == 0 ? "info start_info" : "info"} class:toggleInfo>
     {#if toggleInfo}
         <div class="cover" transition:fade|local on:click={() => toggleInfo = false}></div>
     {/if}
@@ -85,6 +89,9 @@
         flex-direction: column;
         float: left;
         justify-content: space-between;
+    }
+    .start_info {
+        justify-content: flex-end !important;
     }
     .chat {
         width: 100%;

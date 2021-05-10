@@ -121,7 +121,7 @@
                         <span class="mini_btn" on:click={subPicks}>-</span>
                     </div>
                 </label>
-                <button>Submit picks</button>
+                <button>Submit promise</button>
             </form>
         </div>
     {/if}

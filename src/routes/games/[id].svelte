@@ -3,18 +3,26 @@
     import Card from '../../components/Card.svelte'
     import Info from '../../components/Info.svelte'
     import Player from '../../components/Player.svelte'
+    import Plump from '../../components/Plump.svelte'
 
     import user from '../../stores/user'
     import game from '../../stores/game'
     import messages from '../../stores/messages'
     import socket from '../../../scripts/socket'
-    import { fly } from 'svelte/transition'
+    import { fly, fade } from 'svelte/transition'
     import {dndzone} from "svelte-dnd-action";
     let items = []
     
     let loadingPage = true
     let exitPlan = {}
 
+    //Game has finished
+    let gameDone = false
+    let winner
+    let winnerIndex
+    let points
+    let replayName = ""
+    let replayId = undefined
     
     onDestroy(() => {
         socket.emit('disconnect user', exitPlan)
@@ -85,6 +93,23 @@
         }, 5000);
     })
 
+    socket.on('gameDone', data => {
+        game.updateStore(data.game)
+        winnerIndex = data.winnerIndex
+        winner = data.winner
+        points = data.winnerPoints
+        gameDone = true
+    })
+
+    socket.on('replay', data => {
+        replayId = data.game
+        replayName = data.name
+    })
+
+    function joinReplay(){
+        window.location.assign(`/games/${replayId}`)
+    }
+
     //DND setup and functions
     const flipDurationMs = 300
     let dragDisabled = true
@@ -117,13 +142,72 @@
         dropFromOthersDisabled = true
     }
 
+    function replay(){
+        socket.emit('replay', {
+            room: window.location.pathname.split('/')[2],
+            _id: $user._id
+        })
+    }
+
+    socket.on('gotoGame', data => {
+
+        window.location.assign(`/games/${data.game}`)
+    })
+
+    function goHome() {
+        window.location.assign('/')
+    }
 
 </script>
 
 {#if loadingPage}
     <div class="loader">
         <h1>Loading game content</h1><br>
-        <button on:click={() => location.reload()}>Reload</button>
+    </div>
+{/if}
+
+{#if gameDone}
+    <div class="backdrop" in:fade>
+        <div class="modal" in:fly={{y: -500}}>
+            <h2>Game is finished</h2>
+            <p class="congrats">Congratulations {winner}, wins with {points} points!</p>
+            <table>
+                <tr>
+                    <th>#</th>
+                    {#each $game.players as plr}
+                        <th>{plr.name}</th>
+                    {/each}
+                </tr>
+                {#each $game.stats as stat, i}
+                    <tr>
+                        <th>{i + 1}</th>
+                        {#each stat.score as score}
+                            {#if score['value'] == -1}
+                                <td><Plump /></td>
+                            {:else}
+                                <td>{score['value']}</td>
+                            {/if}
+                        {/each}
+                    </tr>
+                {/each}
+                <tr>
+                    <th style="margin-top: 1px solid #444;">Total:</th>
+                    {#each $game.points as point}
+                        <th style="margin-top: 1px solid #444;">{point}</th>
+                    {/each}
+                </tr>
+            </table>
+            <div class="newGame">
+                {#if replayId}
+                    <h3>{replayName} wants to play again!</h3>
+                    <button on:click={joinReplay}>Join game</button>
+                {:else}
+                    <h3>Play again...?</h3>
+                    <button on:click={replay}>Play again</button>
+                {/if}
+                <button on:click={goHome}>Back to Home</button>
+            </div>
+        </div>
     </div>
 {/if}
 
@@ -174,11 +258,10 @@
                     {#each items as item (item.id)}
                         <div class={pickWinner == item._id ? "card_wrapper winner_card" : "card_wrapper"} out:fly={{x: -600}}>
                             <Card card={item} />
-                            <div class="you_player">You played</div>
                         </div>
                     {:else}
                         {#if $game.state == "play" && $game.turnId == $user._id}
-                            <p class="drop_info">Drop your card here!</p>
+                            <p class="drop_info">Your turn,<br>drop your card here!</p>
                         {/if}
                     {/each}
                 </div>
@@ -204,7 +287,7 @@
 
 
 <style>
-    .loader {
+    .loader, .backdrop {
         position: absolute;
         z-index: 9000;
         left: 0;
@@ -216,6 +299,25 @@
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+    .backdrop {
+        background: rgba(0, 0, 0, .7) !important;
+    }
+    .modal {
+        width: 50%;
+        height: auto;
+        border-radius: 10px;
+        padding: 2rem;
+        background: white;
+        color: #444;
+        text-align: center;
+        min-width: 500px;
+    }
+    .modal p {
+        margin-bottom: 3rem;
+    }
+    .modal .newGame {
+        padding: 2rem;
     }
     .wrapper {
         width: 100%;

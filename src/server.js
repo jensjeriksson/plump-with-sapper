@@ -418,13 +418,11 @@ io.on('connection', (socket) => {
 
 			//Set round scores and plumps
 			for(let r = 0; r < gameLength; r++) {
-				console.log('Checking player %s picks and promises', r)
 				if(gameCopy.stats[gameCopy.round - 1].promises[r]['value'] == gameCopy.stats[gameCopy.round - 1].picks[r]['value']) {
 					let setNewScore = 10 + parseInt(gameCopy.stats[gameCopy.round - 1].promises[r]['value'])
 					gameCopy.stats[gameCopy.round - 1].score[r]['value'] = setNewScore
 
 				} else {
-					console.log(`Player ${gameCopy.players[r].name} plumps this round`)
 					gameCopy.stats[gameCopy.round - 1].score[r]['value'] = -1
 				}
 				//Recalculate player total
@@ -482,17 +480,83 @@ io.on('connection', (socket) => {
 
 			}
 
+
 			//Game is finished
 			if(gameCopy.currentRound.length == gameLength && checkRemainingCards.length == 0 && gameCopy.round == gameCopy['length'] * 2) {
+				//Update front end
+				io.to(data.game).emit('updateGame', gameCopy)
+
+				//Check who won
+				let winnerIndex = 0
+				let winnerPoints = gameCopy.points[0]
+				for(let y = 1; y < gameCopy.length; y++) {
+					if(gameCopy.points[y] > winnerPoints) {
+						winnerIndex = y
+						winnerPoints = gameCopy.points[y]
+					}
+				}
+
+
+
 				setTimeout(async () => {
 					gameCopy.finished_at = new Date()
-					game.state = "done"
-					game.active = false
-					io.to(data.game).emit('gameDone', gameCopy)
+					gameCopy.state = "done"
+					gameCopy.active = false
+					gameCopy.turnId = ""
+					gameCopy.round += 1
+					gameCopy.currentRound = []
+
+					io.to(data.game).emit('gameDone', {
+						game: gameCopy,
+						winner: gameCopy.players[winnerIndex].name,
+						winnerIndex,
+						winnerPoints
+					})
 					await Games.findByIdAndUpdate(data.game, gameCopy)
 				}, 5000);
 			}
 
+		} catch (error) {
+			socket.emit('error', error)
+		}
+	})
+
+	socket.on('replay', async data => {
+		try {
+			//Create new game
+			let oldGame = await Games.findById(data.room)
+			let currentUser = await Users.findById(data._id)
+			let newGame = await Games.create({
+				name: 'Rematch by ' +currentUser.name,
+				owner: currentUser._id,
+				length: oldGame.length,
+				players: [{...currentUser}],
+				round: 0,
+				active: true,
+				turn: undefined,
+				state: undefined,
+				notAllowed: -1,
+				stats: [],
+				created_at: new Date()
+			})
+
+			//settimeout for 5 minuter. Delete game is not started
+			let fiveMins = 1000 * 60 * 5
+
+			socket.emit('gotoGame', {
+				game: newGame._id
+			})
+
+			io.to(data.room).emit('replay', {
+				name: currentUser.name,
+				game: newGame._id
+			})
+
+			setTimeout(async () => {
+				let checkGame = await Games.findById(newGame._id)
+
+				if(checkGame.round ==0) await checkGame.delete()
+			}, fiveMins);
 		} catch (error) {
 			socket.emit('error', error)
 		}
@@ -536,6 +600,17 @@ function newUser(data) {
 		}
 	})
 }
+
+//UNCOMMENT FOR PRODUCTION
+import helmet from 'helmet';
+import enforce from 'express-enforces-ssl';
+app.set('trust proxy', true);
+app.use(helmet());
+app.use(helmet.hsts({
+	maxAge: 15552000,
+	includeSubDomains: false
+}));
+app.use(enforce());
 
 app.use(
 		compression({ threshold: 0 }),
