@@ -605,10 +605,12 @@ function newUser(data) {
 import helmet from 'helmet';
 import enforce from 'express-enforces-ssl';
 app.set('trust proxy', true);
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: false,
+  }));
 app.use(helmet.hsts({
 	maxAge: 15552000,
-	includeSubDomains: false
+	includeSubDomains: true
 }));
 app.use(enforce());
 
