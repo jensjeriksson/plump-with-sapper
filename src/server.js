@@ -164,7 +164,10 @@ io.on('connection', (socket) => {
 	})
 
 	socket.on('chat', data => {
-		socket.broadcast.to(data.room).emit('chat', data.message)
+		let mess = data.message
+		mess.id = randomstring.generate(7)
+
+		socket.broadcast.to(data.room).emit('chat', mess)
 	})
 
 	//Games sockets
@@ -271,7 +274,7 @@ io.on('connection', (socket) => {
 			let index = gameCopy.players.findIndex(i => i._id  == pick._id)
 			let cards = gameCopy.stats[pick.round - 1].cards
 			
-			//Check that picks is allowed. Not under 0, not over maximum cards and isNan
+			//Check if picks is allowed. Not under 0, not over maximum cards and isNan
 			if(pick.picks > cards || isNaN(pick.picks) || pick.picks < 0) {
 				console.log('Picks not allowed. Sending error message...')
 				return sendCardError()
@@ -281,12 +284,12 @@ io.on('connection', (socket) => {
 			gameCopy.stats[pick.round - 1].promises[index]['value'] = pick.picks
 
 			//Check if all picks are set and set amount of picks not allowed if last player is in turn
-			let checkForLastTurn = gameCopy.stats[pick.round - 1].promises.filter(i => i['value'] == -1).length
+			let checkForLastTurn = gameCopy.stats[pick.round - 1].promises.filter(i => i['value'] == -1)
 
 			//Set next player in turn and update game to front-end
-			if(checkForLastTurn > 0) {
+			if(checkForLastTurn.length > 0) {
 				//Check for legal picks if last player in turn
-				if(checkForLastTurn == 1) {
+				if(checkForLastTurn.length == 1) {
 					//Last player is up next. Set notAllowed value to other than -1
 					let allPromises = gameCopy.stats[pick.round - 1].promises
 					let totalCards = gameCopy.stats[pick.round - 1].cards
@@ -315,12 +318,12 @@ io.on('connection', (socket) => {
 				
 				//Check for most picks
 				let promisesThisRound = gameCopy.stats[gameCopy.round - 1].promises
-				let indexForHighest = gameCopy.players.findIndex(i => i._id == gameCopy.turnId) + 1
-				indexForHighest = indexForHighest % gameLength
+				let indexForHighest = gameCopy.turn
+				let startIndex = indexForHighest
 				let highestPromise = promisesThisRound[indexForHighest]['value']
 				
 				for(let h = 1; h < gameLength; h++) {
-					let currentIndex = (indexForHighest + h) % gameLength
+					let currentIndex = (startIndex + h) % gameLength
 					if(promisesThisRound[currentIndex]['value'] > highestPromise) {
 						indexForHighest = currentIndex
 					}
@@ -348,6 +351,10 @@ io.on('connection', (socket) => {
 			let gameCopy = {...game._doc}
 			let gameLength = gameCopy.players.length
 
+			if(data._id !== gameCopy.turnId) {
+				return io.to(data.game).emit('updateGame', gameCopy)
+			}
+
 			//Push played card to currentRound
 			let playedCard = {
 				_id: data._id,
@@ -370,6 +377,7 @@ io.on('connection', (socket) => {
 
 				//Update front end with played cards
 				io.to(data.game).emit('updateGame', gameCopy)
+		
 				return await Games.findByIdAndUpdate(data.game, gameCopy)
 			}
 

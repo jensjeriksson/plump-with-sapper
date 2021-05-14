@@ -1,5 +1,6 @@
 <script>
     import messages from '../stores/messages'
+    import notifications from '../stores/notifications'
     import Stats from './Stats.svelte'
     import socket from '../../scripts/socket'
     import game from '../stores/game'
@@ -38,6 +39,12 @@
 
     socket.on('chat', message => {
         messages.write(message)
+        notifications.addMessage(message)
+
+        setTimeout(() => {
+            notifications.deleteMessage()
+        }, 5000);
+
         setTimeout(() => {
             document.querySelector('.chat').scrollTop = document.querySelector('.chat').scrollHeight
         }, 300);
@@ -46,10 +53,10 @@
 </script>
 
 
+{#if toggleInfo}
+    <div class="cover" transition:fade|local on:click={() => toggleInfo = false}></div>
+{/if}
 <div class={$game.round == 0 ? "info start_info" : "info"} class:toggleInfo>
-    {#if toggleInfo}
-        <div class="cover" transition:fade|local on:click={() => toggleInfo = false}></div>
-    {/if}
     <div class="openinfo" on:click={toggleMenu}>
         <div class="center"></div>
     </div>
@@ -62,15 +69,15 @@
                 <p class="time">{new Date().toLocaleTimeString()} - Welcome message</p>
                 <p class="text">Welcome to a game of plump. Feel free to chat with your opponents</p>
             </div>
-            {#each $messages as mess}
-            <div class="message" in:fly={{x: 300}}>
-                <p class="time">{new Date(mess.time).toLocaleTimeString()} - {mess.user} wrote</p>
-                <p class="text">{mess.text}</p>
-            </div>
+            {#each $messages as mess, i}
+                <div class="message" in:fly={{x: 300, delay: 100}}>
+                    <p class="time">{new Date(mess.time).toLocaleTimeString()} - {mess.user} wrote</p>
+                    <p class="text">{mess.text}</p>
+                </div>
             {:else}
-            <div class="message">
-                <p>Be the first one to say something</p>
-            </div>
+                <div class="message">
+                    <p>Be the first one to say something</p>
+                </div>
             {/each}
         </div>
     </div>
@@ -82,16 +89,34 @@
 
 
 <style>
-    .info {
+    /*
+* Prefixed by https://autoprefixer.github.io
+* PostCSS: v7.0.29,
+* Autoprefixer: v9.7.6
+* Browsers: last 4 version
+*/
+
+.info {
         width: 30%;
         height: 100%;
+        display: -webkit-box;
+        display: -ms-flexbox;
         display: flex;
-        flex-direction: column;
+        background: #fafafa;
+        -webkit-box-orient: vertical;
+        -webkit-box-direction: normal;
+            -ms-flex-direction: column;
+                flex-direction: column;
         float: left;
-        justify-content: space-between;
+        -webkit-box-pack: justify;
+            -ms-flex-pack: justify;
+                justify-content: space-between;
+        box-shadow: 6px 0 22px rgba(0, 0, 0, .5);
     }
     .start_info {
-        justify-content: flex-end !important;
+        -webkit-box-pack: end !important;
+            -ms-flex-pack: end !important;
+                justify-content: flex-end !important;
     }
     .chat {
         width: 100%;
@@ -100,8 +125,13 @@
         padding: 1rem;
         position: relative;
         bottom: 0;
+        display: -webkit-box;
+        display: -ms-flexbox;
         display: flex;
-        flex-direction: column;
+        -webkit-box-orient: vertical;
+        -webkit-box-direction: normal;
+            -ms-flex-direction: column;
+                flex-direction: column;
         z-index: 1500;
         overflow-x: hidden;
         overflow-y: auto;
@@ -117,13 +147,17 @@
         padding: .5rem;
         border-radius: 10px;
         margin-bottom: 1rem;
+        border: 1px solid #444;
     }
     form {
         width: 100%;
         height: auto;
         overflow: hidden;
         background: #fafafa;
-        flex-direction: row;
+        -webkit-box-orient: horizontal;
+        -webkit-box-direction: normal;
+            -ms-flex-direction: row;
+                flex-direction: row;
         margin: 0;
         padding: 1rem;
     }
@@ -132,6 +166,18 @@
         margin-right: 1rem;
         border: 2px solid var(--light-blue);
         border-radius: 5px;
+    }
+    input[type="text"]::-webkit-input-placeholder {
+        color: var(--dark-blue)
+    }
+    input[type="text"]::-moz-placeholder {
+        color: var(--dark-blue)
+    }
+    input[type="text"]:-ms-input-placeholder {
+        color: var(--dark-blue)
+    }
+    input[type="text"]::-ms-input-placeholder {
+        color: var(--dark-blue)
     }
     input[type="text"]::placeholder {
         color: var(--dark-blue)
@@ -160,10 +206,19 @@
         color: white;
         border-radius: 50%;
         padding: 7px;
+        display: -webkit-box;
+        display: -ms-flexbox;
         display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
+        -webkit-box-pack: center;
+            -ms-flex-pack: center;
+                justify-content: center;
+        -webkit-box-align: center;
+            -ms-flex-align: center;
+                align-items: center;
+        -webkit-box-orient: vertical;
+        -webkit-box-direction: normal;
+            -ms-flex-direction: column;
+                flex-direction: column;
     }
     .center, .center::before, .center::after {
         width: 21px;
@@ -200,8 +255,12 @@
             position: absolute;
             left: 100%;
             top: 0;
+            -webkit-transition: left .5s ease;
+            -o-transition: left .5s ease;
             transition: left .5s ease;
             z-index: 1500;
+            background: #fafafa;
+            box-shadow: none;
         }
     }
 </style>

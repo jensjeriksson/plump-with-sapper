@@ -6,8 +6,6 @@
     padding: 0;
 }
 :root {
-    --main-height: 1vh;
-    --main-width: 1vh;
     --primary-color: #b9c6d2;
     --secondary-color: #d0dde9;
 	--tertiary-color: #edf0f8;

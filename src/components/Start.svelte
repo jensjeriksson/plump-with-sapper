@@ -132,14 +132,24 @@
 </div>
 
 <style>
-    .main_box {
+    /*
+* Prefixed by https://autoprefixer.github.io
+* PostCSS: v7.0.29,
+* Autoprefixer: v9.7.6
+* Browsers: last 4 version
+*/
+
+.main_box {
         margin-top: 50px;
         width: 300px;
         background: var(--light-blue);
         height: 400px;
-        box-shadow: 0 0 35px rgba(0, 0, 0, .3);
+        -webkit-box-shadow: 0 0 35px rgba(0, 0, 0, .3);
+                box-shadow: 0 0 35px rgba(0, 0, 0, .3);
     }
     .main_box__header {
+        display: -webkit-box;
+        display: -ms-flexbox;
         display: flex;
     }
     .startmenu_btn {

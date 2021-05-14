@@ -1,4 +1,4 @@
-<script>
+<script> 
     import { createEventDispatcher } from 'svelte'
     import Card from './Card.svelte'
     import user from '../stores/user'
@@ -6,28 +6,14 @@
     import socket from '../../scripts/socket'
     import { flip } from 'svelte/animate'
     import { fly } from 'svelte/transition'
-    import {dndzone} from "svelte-dnd-action";
 
     let dispatch = createEventDispatcher()
     let myPicks = 0
-    let items = [];
-    let dragDisabled = true
+    let notAllowed = ""
 
     $: {
         if(myPicks == 0 && $game.notAllowed == 0 && $game.state == "pick" && $game.turnId == $user._id) {
             myPicks = 1
-        }
-    }
-
-    $: {
-        if($game.state == "play") {
-            dragDisabled = false
-        }
-    }
-
-    $: {
-        if($game.cards.length > 0){
-            items = $game.cards.find(i => i._id == $user._id).cards
         }
     }
 
@@ -77,35 +63,85 @@
     //DND setup and functions
     const flipDurationMs = 300;
 
-    function handleDndConsider(e) {
-        items = e.detail.items;
+    function doubleClick(event) {
+        let card = document.getElementById(event.id).getBoundingClientRect()
+        let top = card.top
+        let left = card.left
 
         //Check if card is allowed to be played
-        if($game.currentRound.length == 0) {
+        if($game.currentRound.length == 0 && $game.turnId == $user._id) {
             //This means that player is first out, all cards are allowed
-            dispatch('enableDropzone')
-        } else {
+            //Play card!! 
+            dispatch('coordinates', {left, top})
+            game.playCard({
+                _id: $user._id,
+                name: $user.name,
+                game: window.location.pathname.split('/')[2],
+                card: event
+            })
+            socket.emit('playCard', {
+                _id: $user._id,
+                name: $user.name,
+                game: window.location.pathname.split('/')[2],
+                card: event
+            })
+        } 
+        else if($game.turnId == $user._id) {
             let cardToMatch = $game.currentRound[0].card
             let myCards = $game.cards.find(i => i._id == $user._id).cards
-            let playedCard = myCards.find(j => j.id == e.detail.info.id)
-    
 
-    
-            if(playedCard.suit == cardToMatch.suit) return dispatch('enableDropzone')
-            if(playedCard.suit !== cardToMatch.suit && myCards.filter(p => p.suit == cardToMatch.suit).length > 0) return dispatch('disableDropzone')
-            if(playedCard.suit !== cardToMatch.suit && myCards.filter(p => p.suit == cardToMatch.suit).length == -1) return dispatch('enableDropzone')
+
+            //If suit of played card matches suit of first card played
+            if(event.suit == cardToMatch.suit) {
+                dispatch('coordinates', {left, top})
+                //play card
+                game.playCard({
+                    _id: $user._id,
+                    name: $user.name,
+                    game: window.location.pathname.split('/')[2],
+                    card: event
+                })
+                socket.emit('playCard', {
+                    _id: $user._id,
+                    name: $user.name,
+                    game: window.location.pathname.split('/')[2],
+                    card: event
+                })
+                return
+            }
+
+            if(event.suit !== cardToMatch.suit && myCards.filter(p => p.suit == cardToMatch.suit).length > 0) {
+                //Make card red for 2 seconds
+                console.log('Card now Allowed')
+                notAllowed = event.id
+
+                setTimeout(() => {
+                    if(notAllowed == event.id) return notAllowed = ""
+                }, 2000);
+            }
+            if(event.suit !== cardToMatch.suit && myCards.filter(p => p.suit == cardToMatch.suit).length == 0) {
+                dispatch('coordinates', {left, top})
+                game.playCard({
+                    _id: $user._id,
+                    card: event
+                })
+                socket.emit('playCard', {
+                    _id: $user._id,
+                    name: $user.name,
+                    game: window.location.pathname.split('/')[2],
+                    card: event
+                })
+            }
 
         }
     }
-    function handleDndFinalize(e) {
-        items = e.detail.items;
-    }
+
 </script>
 
 <div class={$game.turnId == $user._id  && $game.state == "pick" ? "your_cards inturn" : "your_cards"}>
-    <h3>Your hand</h3>
+    <h3>Your cards</h3>
     {#if $game.state == "pick" && $game.turnId == $user._id}
-        <div class="pick_control">
+        <div class="pick_control" in:fly>
             <form on:submit|preventDefault={selectPicks}>
                 <label>
                     Your turn.<br>
@@ -126,11 +162,17 @@
         </div>
     {/if}
     {#if $game.cards.length > 0}
-        <div class="cards_dnd" use:dndzone="{{items, flipDurationMs, dragDisabled}}" on:consider="{handleDndConsider}" on:finalize="{handleDndFinalize}">
-            {#each items as item, i (item.id)}
-                <div class="card_wrapper"  animate:flip="{{duration: flipDurationMs}}" in:fly={{x: 300, delay: 200 * i}}>
+        <div class="cards_dnd" >
+            {#each $game.cards.find(i => i._id == $user._id).cards as card, i (card.id)}
+                <div 
+                    in:fly={{x: 300, delay: i * 200}}
+                    class={notAllowed == card.id ? "card_wrapper notAllowed" : "card_wrapper"}
+                    on:dblclick={doubleClick.bind(this, card)}
+                    animate:flip="{{duration: flipDurationMs}}"
+                    id={card.id}
+                >
                     <Card
-                        card={item}
+                        card={card}
                     />
                 </div>
             {/each}
@@ -140,33 +182,59 @@
 
 
 <style>
+    /*
+* Prefixed by https://autoprefixer.github.io
+* PostCSS: v7.0.29,
+* Autoprefixer: v9.7.6
+* Browsers: last 4 version
+*/
+
     .card_wrapper {
         width: 150px;
         height: 210px;
         border-radius: 10px;
         background: white;
-        box-shadow: 0 0 5px rgba(0, 0, 0, .3);
+        -webkit-box-shadow: 0 0 5px rgba(0, 0, 0, .3);
+                box-shadow: 0 0 5px rgba(0, 0, 0, .3);
         margin: 1rem;
         margin-left: -60px;
         position: relative;
         overflow: hidden;
+        -webkit-transition: -webkit-transform .3s ease-in-out;
+        transition: -webkit-transform .3s ease-in-out;
+        -o-transition: transform .3s ease-in-out;
         transition: transform .3s ease-in-out;
+        transition: transform .3s ease-in-out, -webkit-transform .3s ease-in-out;
+        cursor: -webkit-grab;
         cursor: grab;
     }
     .card_wrapper:first-of-type {
         margin-left: 0;
     }
     .card_wrapper:hover {
-        transform: scale(1.05);
+        -webkit-transform: scale(1.05);
+            -ms-transform: scale(1.05);
+                transform: scale(1.05);
     }
     .your_cards {
         width: 100%;
+        height: -webkit-fit-content;
+        height: -moz-fit-content;
         height: fit-content;
+        display: -webkit-box;
+        display: -ms-flexbox;
         display: flex;
-        flex-wrap: nowrap;
-        align-items: center;
+        transition: background .3s ease-in;
+        -ms-flex-wrap: nowrap;
+            flex-wrap: nowrap;
+        -webkit-box-align: center;
+            -ms-flex-align: center;
+                align-items: center;
         display: flex;
-        flex-direction: column;
+        -webkit-box-orient: vertical;
+        -webkit-box-direction: normal;
+            -ms-flex-direction: column;
+                flex-direction: column;
     }
     .inturn {
         position: relative;
@@ -187,12 +255,15 @@
     }
     .row {
         margin-top: 1rem;
+        display: -webkit-box;
+        display: -ms-flexbox;
         display: flex;
     }
     .my_picks {
         padding: .25rem;
         background: white;
-        box-shadow: 0 0 4px rgb(0 0 0 / 30%);
+        -webkit-box-shadow: 0 0 4px rgb(0 0 0 / 30%);
+                box-shadow: 0 0 4px rgb(0 0 0 / 30%);
         border-radius: 5px;
         margin-right: 1rem;
         font-size: 1.5rem;
@@ -209,28 +280,36 @@
     .pick_control {
         position: absolute;
         bottom: 100%;
-        transform: translateY(-28%);
+        -webkit-transform: translateY(-28%);
+            -ms-transform: translateY(-28%);
+                transform: translateY(-28%);
         background: #ccc;
         padding: 1rem;
         border-radius: 10px;
-        box-shadow: 0 0 10px rgb(0 0 0 / 30%)
+        -webkit-box-shadow: 0 0 10px rgb(0 0 0 / 30%);
+                box-shadow: 0 0 10px rgb(0 0 0 / 30%)
     }
     .cards_dnd {
         width: 100%;
+        display: -webkit-box;
+        display: -ms-flexbox;
         display: flex;
-        align-items: center;
-        justify-content: center;
+        -webkit-box-align: center;
+            -ms-flex-align: center;
+                align-items: center;
+        -webkit-box-pack: center;
+            -ms-flex-pack: center;
+                justify-content: center;
         height: 100%;
     }
     .notAllowed {
-        font-size: .9rem;
-        color: red;
+        background: rgb(252, 132, 132);
     }
 
-    @media screen and (max-width: 1281px)  {
+    @media screen and (max-width: 1280px)  {
         .card_wrapper {
-            width: 114px;
-            height: 162px;
+            height: 150px;
+            width: 107px;
         }
     }
 </style>
